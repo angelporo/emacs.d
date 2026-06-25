@@ -9,10 +9,10 @@
 ;; Produce backtraces when errors occur: can be helpful to diagnose startup issues
 ;;(setq debug-on-error t)
 
-(let ((minver "25.1"))
+(let ((minver "28.1"))
   (when (version< emacs-version minver)
     (error "Your Emacs is too old -- this config requires v%s or higher" minver)))
-(when (version< emacs-version "26.1")
+(when (version< emacs-version "30.1")
   (message "Your Emacs is old, and some functionality in this config will be disabled. Please upgrade if possible."))
 
 (add-to-list 'load-path (expand-file-name "lisp" user-emacs-directory))
@@ -22,24 +22,35 @@
 (defconst *is-a-mac* (eq system-type 'darwin))
 
 
-;; Adjust garbage collection thresholds during startup, and thereafter
+;; Adjust garbage collection threshold for early startup (see use of gcmh below)
+(setq gc-cons-threshold (* 128 1024 1024))
 
-(let ((normal-gc-cons-threshold (* 20 1024 1024))
-      (init-gc-cons-threshold (* 128 1024 1024)))
-  (setq gc-cons-threshold init-gc-cons-threshold)
-  (add-hook 'emacs-startup-hook
-            (lambda () (setq gc-cons-threshold normal-gc-cons-threshold))))
+
+;; Process performance tuning
+
+(setq read-process-output-max (* 4 1024 1024))
+(setq process-adaptive-read-buffering nil)
 
 
 ;; Bootstrap config
 
 
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(setq custom-file (locate-user-emacs-file "custom.el"))
 (require 'init-utils)
 (require 'init-site-lisp) ;; Must come before elpa, as it may provide package.el
 ;; Calls (package-initialize)
 (require 'init-elpa)      ;; Machinery for installing required packages
 (require 'init-exec-path) ;; Set up $PATH
+
+
+;; General performance tuning
+(when (require-package 'gcmh)
+  (setq gcmh-high-cons-threshold (* 128 1024 1024))
+  (add-hook 'after-init-hook (lambda ()
+                               (gcmh-mode)
+                               (diminish 'gcmh-mode))))
+
+(setq jit-lock-defer-time 0)
 
 
 ;; Allow users to provide an optional "init-preload-local.el"
@@ -60,12 +71,13 @@
 (require 'init-grep)
 (require 'init-uniquify)
 (require 'init-ibuffer)
-(require 'init-flycheck)
+(require 'init-flymake)
+(require 'init-eglot)
 
 (require 'init-recentf)
 (require 'init-minibuffer)
 (require 'init-hippie-expand)
-(require 'init-company)
+(require 'init-corfu)
 (require 'init-windows)
 (require 'init-sessions)
 (require 'init-mmm)
@@ -111,13 +123,18 @@
 (require 'init-terraform)
 (require 'init-nix)
 (maybe-require-package 'nginx-mode)
+(maybe-require-package 'just-mode)
+(when (maybe-require-package 'just-ts-mode)
+  ;; Undo overly-optimistic autoloading, so that things still work in
+  ;; Emacs 29 without treesitter
+  (sanityinc/remove-auto-mode  'just-ts-mode))
+(maybe-require-package 'justl)
 
 (require 'init-paredit)
 (require 'init-lisp)
-(require 'init-slime)
+(require 'init-sly)
 (require 'init-clojure)
 (require 'init-clojure-cider)
-(require 'init-common-lisp)
 
 (when *spell-check-support-enabled*
   (require 'init-spelling))
@@ -127,14 +144,17 @@
 (require 'init-folding)
 (require 'init-dash)
 
-;;(require 'init-twitter)
-;; (require 'init-mu)
 (require 'init-ledger)
+(require 'init-go)
+(require 'init-lua)
+(require 'init-uiua)
+(require 'init-zig)
+(require 'init-terminals)
+
 ;; Extra packages which don't require any configuration
 
 (require-package 'sudo-edit)
-(require-package 'gnuplot)
-(require-package 'lua-mode)
+(maybe-require-package 'gnuplot)
 (require-package 'htmlize)
 (when *is-a-mac*
   (require-package 'osx-location))
@@ -149,6 +169,11 @@
   (add-hook 'after-init-hook 'global-eldoc-mode))
 
 (require 'init-direnv)
+
+(when (and (require 'treesit nil t)
+           (fboundp 'treesit-available-p)
+           (treesit-available-p))
+  (require 'init-treesitter))
 
 
 

@@ -16,28 +16,28 @@
 
 (require-package 'pip-requirements)
 
-(when (maybe-require-package 'anaconda-mode)
-  (with-eval-after-load 'python
-    ;; Anaconda doesn't work on remote servers without some work, so
-    ;; by default we enable it only when working locally.
-    (add-hook 'python-mode-hook
-              (lambda () (unless (file-remote-p default-directory)
-                           (anaconda-mode 1))))
-    (add-hook 'anaconda-mode-hook
-              (lambda ()
-                (anaconda-eldoc-mode (if anaconda-mode 1 0)))))
-  (with-eval-after-load 'anaconda-mode
-    (define-key anaconda-mode-map (kbd "M-?") nil))
-  (when (maybe-require-package 'company-anaconda)
-    (with-eval-after-load 'company
-      (with-eval-after-load 'python
-        (add-to-list 'company-backends 'company-anaconda)))))
+(when (maybe-require-package 'flymake-ruff)
+  (defun sanityinc/flymake-ruff-maybe-enable ()
+    (when (executable-find "ruff")
+      (flymake-ruff-load)))
+  (add-hook 'python-mode-hook 'sanityinc/flymake-ruff-maybe-enable))
+
+(maybe-require-package 'ruff-format)
+(reformatter-define ruff-fix
+  :program ruff-format-command
+  :args (list "check" "--fix-only" "--stdin-filename" (or (buffer-file-name) input-file))
+  :lighter " RuffFix")
 
 (when (maybe-require-package 'toml-mode)
-  (add-to-list 'auto-mode-alist '("poetry\\.lock\\'" . toml-mode)))
+  (add-to-list 'auto-mode-alist '("\\(poetry\\|uv\\)\\.lock\\'" . toml-mode)))
 
 (when (maybe-require-package 'reformatter)
-  (reformatter-define black :program "black"))
+  (reformatter-define black :program "black" :args '("-")))
+
+(with-eval-after-load 'project
+  (add-to-list 'project-vc-extra-root-markers "pyproject.toml"))
+(with-eval-after-load 'projectile
+  (add-to-list 'projectile-project-root-files "pyproject.toml"))
 
 (provide 'init-python)
 ;;; init-python.el ends here

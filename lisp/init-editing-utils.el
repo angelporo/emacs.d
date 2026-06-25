@@ -15,7 +15,7 @@
 
 (setq-default
  blink-cursor-interval 0.4
- bookmark-default-file (expand-file-name ".bookmarks.el" user-emacs-directory)
+ bookmark-default-file (locate-user-emacs-file ".bookmarks.el")
  buffers-menu-max-size 30
  case-fold-search t
  column-number-mode t
@@ -65,18 +65,10 @@
 (require-package 'mode-line-bell)
 (add-hook 'after-init-hook 'mode-line-bell-mode)
 
-
-
-(when (maybe-require-package 'beacon)
-  (setq-default beacon-lighter "")
-  (setq-default beacon-size 20)
-  (add-hook 'after-init-hook 'beacon-mode))
-
 
 
-;;; Newline behaviour
+;;; Newline behaviour (see also electric-indent-mode, enabled above)
 
-(global-set-key (kbd "RET") 'newline-and-indent)
 (defun sanityinc/newline-at-end-of-line ()
   "Move to end of line, enter a newline, and reindent."
   (interactive)
@@ -94,13 +86,15 @@
 
 (when (fboundp 'display-line-numbers-mode)
   (setq-default display-line-numbers-width 3)
-  (add-hook 'prog-mode-hook 'display-line-numbers-mode))
+  (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+  (add-hook 'yaml-mode-hook 'display-line-numbers-mode)
+  (add-hook 'yaml-ts-mode-hook 'display-line-numbers-mode))
 
 
 
 (when (boundp 'display-fill-column-indicator)
   (setq-default indicate-buffer-boundaries 'left)
-  (setq-default display-fill-column-indicator-character ?\u254e)
+  (setq-default display-fill-column-indicator-character ?┊)
   (add-hook 'prog-mode-hook 'display-fill-column-indicator-mode))
 
 
@@ -148,9 +142,14 @@
 ;; Show matching parens
 (add-hook 'after-init-hook 'show-paren-mode)
 
+(when (fboundp 'repeat-mode)
+  (add-hook 'after-init-hook 'repeat-mode))
 
 
 ;;; Handy key bindings
+
+(with-eval-after-load 'help
+  (define-key help-map "A" 'describe-face))
 
 (global-set-key (kbd "C-.") 'set-mark-command)
 (global-set-key (kbd "C-x C-.") 'pop-global-mark)
@@ -194,8 +193,6 @@
 ;; use M-S-up and M-S-down, which will work even in lisp modes.
 
 (require-package 'move-dup)
-(global-set-key [M-up] 'move-dup-move-lines-up)
-(global-set-key [M-down] 'move-dup-move-lines-down)
 (global-set-key [M-S-up] 'move-dup-move-lines-up)
 (global-set-key [M-S-down] 'move-dup-move-lines-down)
 
@@ -224,37 +221,6 @@
 (with-eval-after-load 'whole-line-or-region
   (diminish 'whole-line-or-region-local-mode))
 
-
-
-(defun sanityinc/open-line-with-reindent (n)
-  "A version of `open-line' which reindents the start and end positions.
-If there is a fill prefix and/or a `left-margin', insert them
-on the new line if the line would have been blank.
-With arg N, insert N newlines."
-  (interactive "*p")
-  (let* ((do-fill-prefix (and fill-prefix (bolp)))
-         (do-left-margin (and (bolp) (> (current-left-margin) 0)))
-         (loc (point-marker))
-         ;; Don't expand an abbrev before point.
-         (abbrev-mode nil))
-    (delete-horizontal-space t)
-    (newline n)
-    (indent-according-to-mode)
-    (when (eolp)
-      (delete-horizontal-space t))
-    (goto-char loc)
-    (while (> n 0)
-      (cond ((bolp)
-             (if do-left-margin (indent-to (current-left-margin)))
-             (if do-fill-prefix (insert-and-inherit fill-prefix))))
-      (forward-line 1)
-      (setq n (1- n)))
-    (goto-char loc)
-    (end-of-line)
-    (indent-according-to-mode)))
-
-(global-set-key (kbd "C-o") 'sanityinc/open-line-with-reindent)
-
 
 
 ;; M-^ is inconvenient, so also bind M-j
@@ -272,7 +238,7 @@ With arg N, insert N newlines."
       (let ;; To make `end-of-line' and etc. to ignore fields.
           ((inhibit-field-text-motion t))
         (sort-subr nil 'forward-line 'end-of-line nil nil
-                   (lambda (s1 s2) (eq (random 2) 0)))))))
+                   (lambda (_ _) (eq (random 2) 0)))))))
 
 
 

@@ -15,10 +15,13 @@
 
 ;;; Standard package repositories
 
-(add-to-list 'package-archives '( "melpa" . "https://melpa.org/packages/") t)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(add-to-list 'package-unsigned-archives "melpa")
 ;; Official MELPA Mirror, in case necessary.
 ;;(add-to-list 'package-archives (cons "melpa-mirror" (concat proto "://www.mirrorservice.org/sites/melpa.org/packages/")) t)
 
+;; Allow built-in packages to be upgraded
+(setq package-install-upgrade-built-in t)
 
 
 ;; Work-around for https://debbugs.gnu.org/cgi/bugreport.cgi?bug=34341
@@ -32,6 +35,8 @@
   "Install given PACKAGE, optionally requiring MIN-VERSION.
 If NO-REFRESH is non-nil, the available package lists will not be
 re-downloaded in order to locate PACKAGE."
+  (when (stringp min-version)
+    (setq min-version (version-to-list min-version)))
   (or (package-installed-p package min-version)
       (let* ((known (cdr (assoc package package-archive-contents)))
              (best (car (sort known (lambda (a b)
@@ -61,6 +66,7 @@ locate PACKAGE."
 ;;; Fire up package.el
 
 (setq package-enable-at-startup nil)
+(setq package-native-compile t)
 (package-initialize)
 
 
@@ -83,16 +89,28 @@ advice for `require-package', to which ARGS are passed."
 
 (advice-add 'require-package :around 'sanityinc/note-selected-package)
 
+
+;; Work around an issue in Emacs 29 where seq gets implicitly
+;; reinstalled via the rg -> transient dependency chain, but fails to
+;; reload cleanly due to not finding seq-25.el, breaking first-time
+;; start-up
+;; See https://debbugs.gnu.org/cgi/bugreport.cgi?bug=67025
+(when (string= "29.1" emacs-version)
+  (defun sanityinc/reload-previously-loaded-with-load-path-updated (orig pkg-desc)
+    (let ((load-path (cons (package-desc-dir pkg-desc) load-path)))
+      (funcall orig pkg-desc)))
+
+  (advice-add 'package--reload-previously-loaded :around
+              'sanityinc/reload-previously-loaded-with-load-path-updated))
+
+
+
 (when (fboundp 'package--save-selected-packages)
   (require-package 'seq)
   (add-hook 'after-init-hook
             (lambda ()
               (package--save-selected-packages
                (seq-uniq (append sanityinc/required-packages package-selected-packages))))))
-
-
-(require-package 'fullframe)
-(fullframe list-packages quit-window)
 
 
 (let ((package-check-signature nil))

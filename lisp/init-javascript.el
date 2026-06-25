@@ -41,9 +41,6 @@
 
   (js2-imenu-extras-setup))
 
-;; In Emacs >= 25, the following is an alias for js-indent-level anyway
-(setq-default js2-basic-offset 2)
-
 (add-to-list 'interpreter-mode-alist (cons "node" 'js2-mode))
 
 (with-eval-after-load 'js2-mode
@@ -51,30 +48,23 @@
   (sanityinc/major-mode-lighter 'js2-jsx-mode "JSX2"))
 
 
+(require 'derived)
+(when (executable-find "rg")
+  (maybe-require-package 'xref-js2)
+  (setq-default xref-js2-search-program 'rg)
 
-(when (and (or (executable-find "rg") (executable-find "ag"))
-           (maybe-require-package 'xref-js2))
-  (when (executable-find "rg")
-    (setq-default xref-js2-search-program 'rg))
   (defun sanityinc/enable-xref-js2 ()
     (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t))
-  (with-eval-after-load 'js
-    (define-key js-mode-map (kbd "M-.") nil)
-    (add-hook 'js-mode-hook 'sanityinc/enable-xref-js2))
+
+  (let ((base-mode (if (fboundp 'js-base-mode) 'js-base-mode 'js-mode)))
+    (with-eval-after-load 'js
+      (add-hook (derived-mode-hook-name base-mode) 'sanityinc/enable-xref-js2)
+      (define-key js-mode-map (kbd "M-.") nil)
+      (when (boundp 'js-ts-mode-map)
+        (define-key js-ts-mode-map (kbd "M-.") nil))))
   (with-eval-after-load 'js2-mode
-    (define-key js2-mode-map (kbd "M-.") nil)
-    (add-hook 'js2-mode-hook 'sanityinc/enable-xref-js2)))
+    (define-key js2-mode-map (kbd "M-.") nil)))
 
-
-
-;;; Coffeescript
-
-(when (maybe-require-package 'coffee-mode)
-  (with-eval-after-load 'coffee-mode
-    (setq-default coffee-tab-width js-indent-level))
-
-  (when (fboundp 'coffee-mode)
-    (add-to-list 'auto-mode-alist '("\\.coffee\\.erb\\'" . coffee-mode))))
 
 
 ;; Run and interact with an inferior JS via js-comint.el
@@ -88,24 +78,10 @@
 
   (define-minor-mode inferior-js-keys-mode
     "Bindings for communicating with an inferior js interpreter."
-    nil " InfJS" inferior-js-minor-mode-map)
+    :init-value nil :lighter " InfJS" :keymap inferior-js-minor-mode-map)
 
   (dolist (hook '(js2-mode-hook js-mode-hook))
     (add-hook hook 'inferior-js-keys-mode)))
-
-
-;; Alternatively, use skewer-mode
-
-(when (maybe-require-package 'skewer-mode)
-  (with-eval-after-load 'skewer-mode
-    (add-hook 'skewer-mode-hook
-              (lambda () (inferior-js-keys-mode -1)))))
-
-
-
-(when (maybe-require-package 'add-node-modules-path)
-  (dolist (mode '(typescript-mode js-mode js2-mode coffee-mode))
-    (add-hook (derived-mode-hook-name mode) 'add-node-modules-path)))
 
 
 (provide 'init-javascript)

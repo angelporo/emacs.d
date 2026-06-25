@@ -14,7 +14,7 @@
 
 ;; Make "C-x o" prompt for a target window when there are more than 2
 (require-package 'switch-window)
-(setq-default switch-window-shortcut-style 'alphabet)
+(setq-default switch-window-shortcut-style 'qwerty)
 (setq-default switch-window-timeout nil)
 (global-set-key (kbd "C-x o") 'switch-window)
 
@@ -107,6 +107,14 @@ Call a second time to restore the original window configuration."
   (require-package 'windswap)
   (add-hook 'after-init-hook (apply-partially 'windmove-default-keybindings 'control))
   (add-hook 'after-init-hook (apply-partially 'windswap-default-keybindings 'shift 'control)))
+
+
+
+(when (maybe-require-package 'pulsar)
+  (setq-default pulsar-pulse-region-functions nil)
+  (pulsar-global-mode t))
+
+(setq-default window-combination-resize t)
 
 
 (provide 'init-windows)

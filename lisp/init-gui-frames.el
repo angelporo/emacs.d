@@ -63,8 +63,8 @@
 
 
 (when *is-a-mac*
-  (when (maybe-require-package 'ns-auto-titlebar)
-    (ns-auto-titlebar-mode)))
+  (require-package 'ns-auto-titlebar)
+  (ns-auto-titlebar-mode))
 
 
 (setq frame-title-format
@@ -87,6 +87,10 @@
 
 
 (require-package 'disable-mouse)
+
+
+(when (fboundp 'pixel-scroll-precision-mode)
+  (pixel-scroll-precision-mode))
 
 
 (provide 'init-gui-frames)

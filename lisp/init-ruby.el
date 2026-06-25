@@ -7,7 +7,7 @@
 
 (add-auto-mode 'ruby-mode
                "\\.rxml\\'"
-               "\\.rjs\\'" "\\.irbrc\\'" "\\.pryrc\\'" "\\.builder\\'" "\\.ru\\'"
+               "\\.rjs\\'" "\\.irbrc\\'" "\\.pryrc\\'" "\\.builder\\'"
                "\\.gemspec\\'" "Kirkfile\\'")
 (add-auto-mode 'conf-mode "Gemfile\\.lock\\'")
 
@@ -57,10 +57,7 @@
 ;;; Robe
 (when (maybe-require-package 'robe)
   (with-eval-after-load 'ruby-mode
-    (add-hook 'ruby-mode-hook 'robe-mode))
-  (with-eval-after-load 'robe
-    (with-eval-after-load 'company
-      (add-to-list 'company-backends 'company-robe))))
+    (add-hook 'ruby-mode-hook 'robe-mode)))
 
 
 
@@ -68,9 +65,6 @@
 (require-package 'yari)
 (defalias 'ri 'yari)
 
-
-
-(require-package 'bundler)
 
 
 (when (maybe-require-package 'yard-mode)
